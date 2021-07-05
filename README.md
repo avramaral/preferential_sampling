@@ -1,3 +1,3 @@
 # Preferential Sampling paper
 
-This repository contains the appropriate code files to replicate the *Model-based Geostatistics under Preferential Sampling for Spatial Data Analysis* paper results.
+This repository contains all the files needed to replicate the results of the paper **Model-Based Geostatistics in Preferred Sampling for Spatial Data Analysis**.
