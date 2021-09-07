@@ -15,7 +15,7 @@ source('main_functions.R')
 n_iter = 50
 possible_parameters = c(1, 2, 3, 4)
 betas = c(0, 0.5)
-sample_size = c(100, 500)
+sample_size = c(25, 100, 400)
 
 # Common parameters
 sig2_error = 1
