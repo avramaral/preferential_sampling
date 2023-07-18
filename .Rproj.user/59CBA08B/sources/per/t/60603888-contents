@@ -1,0 +1,208 @@
+source("header.R")
+source("functions_data_generation.R")
+source("functions_model_fitting.R")
+source("functions_result_processing.R")
+source("functions_aux.R")
+
+xlim <- c(0, 10)
+ylim <- c(0, 10)
+by <- 0.05
+mu <- 2
+nu <- 1
+scl <- 2
+sig2 <- 1
+
+sig2_error <- 1
+
+n_points <- NULL
+alpha <-   3.497916
+pref_sampling <- TRUE
+
+f <- function (x, y, ...) { 1 }
+# f <- function (x, y, ...) { 2 } 
+# f <- function (x, y, ...) { 0.5 * ((x / diff(xlim)) ^ 2 + (y / diff(ylim)) ^ 2) } 
+# f <- function (x, y, ...) { 0.5 * ((x / diff(xlim)) + (y / diff(ylim))) }
+# f <- function (x, y, ...) {
+#   xy <- cbind(x, y)
+#   z <- rep(x = 0, times = nrow(xy))
+#   for (i in 1:nrow(xy)) {
+#     if (xy[i, 1] <= mean(xlim) & xy[i, 2] <= mean(ylim)) { z[i] <- 0.25 }
+#     else if (xy[i, 1] >= mean(xlim) & xy[i, 2] <= mean(ylim)) { z[i] <- 0.50 }
+#     else if (xy[i, 1] >= mean(xlim) & xy[i, 2] >= mean(ylim)) { z[i] <- 1.00 }
+#     else if (xy[i, 1] <= mean(xlim) & xy[i, 2] >= mean(ylim)) { z[i] <- 1.25 }
+#   }
+#   z
+# }
+# 
+# f <- function (x, y, ...) {
+#   xy <- cbind(x, y)
+#   z <- rep(x = 0, times = nrow(xy))
+#   for (i in 1:nrow(xy)) {
+#     if (xy[i, 2] <= mean(ylim)) { z[i] <- 0.50 }
+#     else if (xy[i, 2] > mean(ylim)) { z[i] <- 1.00 }
+#   }
+#   z
+# }
+
+# 
+# f <- function (x, y, ...) { 0.5 * ((x / diff(xlim)) ^ 2 + (y / diff(ylim)) ^ 2) }
+
+# f <- function (x, y, ...) { (y / diff(ylim)) }
+f <- function (x, y, ...) { (x / diff(xlim)) }
+
+# pref_process <- latt_generation(xlim = xlim, ylim = ylim, by = by, mu = 0, nu = 2, scl = 5, sig2 = 1, seed = 1234)
+# values(pref_process) <- (values(pref_process) - min(values(pref_process))) / (max(values(pref_process)) - min(values(pref_process)))
+# f <- function (x, y, ...) { raster::extract(pref_process, cbind(x, y)) } # Come up with a process that really changes the intensity field.
+
+##################################################
+
+# DATA GENERATION
+
+latt <- latt_generation(xlim = xlim, ylim = ylim, by = by, nu = nu, scl = scl, sig2 = sig2, seed = 2)
+pref <- pref_generation(xlim = xlim, ylim = ylim, by = by, f = f)
+loct <- sample_location(latt = latt, pref = pref, n_points = n_points, alpha = alpha, pref_sampling = pref_sampling, seed = 2)
+Yobs <- observed_values(latt = latt, loct = loct$loct, mu = mu, sig2_error = sig2_error, seed = 2)
+orig <- latt; values(orig) <- values(orig) + mu
+length(Yobs)
+
+if (TRUE) {
+  par(mfrow = c(1, 4))
+  plot(latt, main = "Latent process")
+  plot(pref, main = "Preferentiality process")
+  plot(loct$lambda, main = "Lambda")
+  plot(orig, main = "Original process")
+  plot(loct$loct, add = TRUE, pch = 21, col = rgb(0, 0, 0, 1))
+  par(mfrow = c(1, 1))
+}
+
+##################################################
+
+# INLA FITTING
+
+mesh_wgt <- mesh_weights(latt = latt, max_edge_mf = c(0.1, 0.25), offset_mf = c(0.1, 0.15), cutoff_mf = 0.02, PLOT = TRUE)
+
+# Base functions
+# center_pts <- rbind(c(0.25, 0.25), c(0.75, 0.25), c(0.25, 0.75), c(0.75, 0.75), c(0.50, 0.50)) #, c(0.25, 0.50), c(0.50, 0.25), c(0.50, 0.75), c(0.75, 0.50))
+#center_pts <-  rbind(c(0.50, -0.25), c(0.50, 0.25), c(0.50, 0.50), c(0.50, 0.75), c(0.50, 1.25)) # Vertical
+  #rbind(c(0.50, -0.25), c(0.50, 0.10), c(0.50, 0.20), c(0.50, 0.30), c(0.50, 0.40), c(0.50, 0.50), c(0.50, 0.60), c(0.50, 0.70), c(0.50, 0.80), c(0.50, 0.90), c(0.50, 1.25)) # Vertical
+center_pts <- rbind(c(-0.25, 0.50), c(0.25, 0.50), c(0.50, 0.50), c(0.75, 0.50), c(1.25, 0.50)) #rbind(c(-0.25, 0.50), c(0.25, 0.50), c(0.50, 0.50), c(0.75, 0.50), c(1.25, 0.50)) # Horizontal
+# center_pts <- list(list(xlim = c(-0.25, 0.50), ylim = c(-0.25, 0.50)), list(xlim = c(0.50, 1.25), ylim = c(-0.25, 0.50)), list(xlim = c(0.50, 1.25), ylim = c(0.50, 1.25)), list(xlim = c(-0.25, 0.50), ylim = c(0.50, 1.25)))
+# center_pts <- list(list(xlim = c(-0.25, 1.25), ylim = c(-0.25, 0.50)), list(xlim = c(-0.25, 1.25), ylim = c(0.50, 1.25)))
+
+# center_pts <- list(rbind(c(-0.25, 0.50), c(0.25, 0.50), c(0.50, 0.50), c(0.75, 0.50), c(1.25, 0.50)), rbind(c(0.50, -0.25), c(0.50, 0.25), c(0.50, 0.50), c(0.50, 0.75), c(0.50, 1.25)))
+# center_pts <-  lapply(X = center_pts, FUN = function (x) { x * diff(xlim) })
+                  
+if (is.list(center_pts)) { center_pts <- lapply(X = center_pts, FUN = function (x) { lapply(X = x, FUN = function (y) { y * diff(xlim) }) }) } else { center_pts <- center_pts * diff(xlim) }
+
+#smoothing_kernel <- "radial_basis"
+#smoothing_kernel <- "Wendland"
+smoothing_kernel <- "unidirectional_triangular"
+#smoothing_kernel <- "diagonal_triangular"
+#smoothing_kernel <- "partition"
+bandwidth <- 10
+bfs <- base_functions(center_pts = center_pts, mesh = mesh_wgt$mesh, loct = loct$loct, smoothing_kernel = smoothing_kernel, bandwidth = bandwidth, NS = FALSE)
+
+# If prediction
+coord_pred <- as.data.frame(rasterToPoints(latt)[, c("x", "y")])
+bfs_pred <- base_functions(center_pts = center_pts, loct = coord_pred, smoothing_kernel = smoothing_kernel, bandwidth = bandwidth, NS = FALSE)
+if (TRUE) { plot_bfs(bfs = bfs_pred, coord = coord_pred) }
+
+# Projection matrices (PM)
+# The following parameters define the model that we will fit (out of the 6 options: non-PS, const-dp-PS, and varying-dp-PS, all with or without the prediction step)
+PS_pm <- TRUE
+bfs_pm <- bfs #bfs # NULL
+bfs_pred_pm <- bfs_pred #bfs_pred # NULL
+coord_pred_pm <- coord_pred # NULL
+pm <- projection_matrices(mesh = mesh_wgt$mesh, wgt = mesh_wgt$wgt, loct = loct$loct, PS = PS_pm, bfs = bfs_pm, bfs_pred = bfs_pred_pm, coord_pred = coord_pred_pm)
+
+SPDE <- inla.spde2.pcmatern(mesh = mesh_wgt$mesh, alpha = 2,
+                            prior.range = c(0.05, 0.01), # P(range < 0.05) = 0.01
+                            prior.sigma = c(1.00, 0.01)) # P(sigma > 1.00) = 0.01
+
+gaus_prior <- list(prior = "gaussian", param = c(0, 5)) # Prior for the degree of preferentiality
+
+fs_formula <- full_stack_formula(Yobs = Yobs, pm = pm, SPDE = SPDE, gaus_prior = gaus_prior) 
+
+result <- model_fitting(fs_formula = fs_formula, verbose = TRUE)
+
+##################################################
+
+# RESULT PROCESSING AND VISUALIZATION
+
+if (result$prediction) {
+  
+  if (TRUE) { # Plot INTENSITY
+    idx_int <- inla.stack.index(fs_formula$full_stack, tag = "pred_pp")$data
+    fitted_intensity <- exp(result$fit$summary.fitted.values[idx_int, c("mean")])
+    
+    intensity_process_raster <- loct$lambda
+    values(intensity_process_raster) <- fitted_intensity
+    
+    intensity_error <- MSE(orig = loct$lambda, pred = intensity_process_raster)
+    print(paste("Prediction error (intensity): ", round(x = intensity_error, digits = 4), sep = ""))
+    
+    if (TRUE) {
+      par(mfrow = c(1, 2))
+      n <- 140
+      min_value <- min(c(values(loct$lambda), values(intensity_process_raster))) - 0.01
+      max_value <- max(c(values(loct$lambda), values(intensity_process_raster))) + 0.01
+      brks <- round(seq(from = min_value, to = max_value, length.out = n), 9)
+      arg <- list(at = seq(from = min_value, to = max_value, length.out = 5), labels = round(seq(from = min_value, to = max_value, length.out = 5), digits = 2)) 
+      plot(loct$lambda, breaks = brks, col = rainbow(n = n, start = 0.05, end = 0.95), axis.arg = arg, main = "Original Intensity Process")
+      plot(intensity_process_raster, breaks = brks, col = rainbow(n = n, start = 0.05, end = 0.95), axis.arg = arg, main = paste("Predicted Intensity Process (", ifelse(test = result$PS, yes = "", no = "Non-"), "PS)", sep = ""))
+      par(mfrow = c(1, 1))
+    }
+  }
+  
+  idx <- inla.stack.index(fs_formula$full_stack, tag = "pred_y")$data
+  fitted_process <- result$fit$summary.fitted.values[idx, c("mean")]
+  
+  fitted_process_raster <- latt 
+  values(fitted_process_raster) <- fitted_process
+  
+  prediction_error <- MSE(orig = orig, pred = fitted_process_raster)
+  print(paste("Prediction error: ", round(x = prediction_error, digits = 4), sep = ""))
+  
+  if (TRUE) {
+    par(mfrow = c(1, 2))
+    n <- 140
+    min_value <- min(c(values(orig), values(fitted_process_raster))) - 0.01
+    max_value <- max(c(values(orig), values(fitted_process_raster))) + 0.01
+    brks <- round(seq(from = min_value, to = max_value, length.out = n), 9)
+    arg <- list(at = seq(from = min_value, to = max_value, length.out = 5), labels = round(seq(from = min_value, to = max_value, length.out = 5), digits = 2)) 
+    plot(orig, breaks = brks, col = rainbow(n = n, start = 0.05, end = 0.85), axis.arg = arg, main = "Original Process")
+    plot(fitted_process_raster, breaks = brks, col = rainbow(n = n, start = 0.05, end = 0.85), axis.arg = arg, main = paste("Predicted Process (", ifelse(test = result$PS, yes = "", no = "Non-"), "PS)", sep = ""))
+    par(mfrow = c(1, 1))
+  }
+}
+
+normalize <- TRUE
+if (result$varying_pref) {
+  
+  estimated_pref <- compute_preferentiatility(fit = result$fit, coord_pred = coord_pred, bfs_pred = bfs_pred, xlim = xlim, by = by)
+  pref_cp <- pref
+
+  # if (normalize) {
+  #   values(estimated_pref) <- (values(estimated_pref) - min(values(estimated_pref))) / (max(values(estimated_pref)) - min(values(estimated_pref)))
+  #   values(pref_cp) <- (values(pref) - min(values(pref))) / (max(values(pref)) - min(values(pref)))
+  # }
+  
+  if (normalize) {
+    mm <- max(c(values(estimated_pref), values(pref)))
+    mn <- min(c(values(estimated_pref), values(pref)))
+    values(estimated_pref) <- (values(estimated_pref) - mn) / (mm - mn)
+    values(pref_cp) <- (values(pref)  - mn) / (mm - mn)
+  }
+  
+  if (TRUE) {
+    par(mfrow = c(1, 2))
+    min_value <- ifelse(test = normalize, yes = 0, no = min(c(values(pref_cp), values(estimated_pref))) - 0.01)
+    max_value <- ifelse(test = normalize, yes = 1, no = max(c(values(pref_cp), values(estimated_pref))) + 0.01)
+    brks <- round(seq(from = min_value, to = max_value, length.out = n), 9)
+    arg <- list(at = seq(from = min_value, to = max_value, length.out = 5), labels = round(seq(from = min_value, to = max_value, length.out = 5), digits = 2)) 
+    plot(pref_cp, breaks = brks, col = rainbow(n = n, start = 0.05, end = 0.85), axis.arg = arg, main = "True Preferentiality Process")
+    plot(estimated_pref, breaks = brks, col = rainbow(n = n, start = 0.05, end = 0.85), axis.arg = arg, main = "Estimated Preferentiality Process")
+    par(mfrow = c(1, 1))
+  }
+}
+

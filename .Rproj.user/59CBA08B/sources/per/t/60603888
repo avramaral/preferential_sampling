@@ -1,0 +1,26 @@
+{
+    "id": "60603888",
+    "path": "~/Desktop/Preferential Sampling/main.R",
+    "project_path": "main.R",
+    "type": "r_source",
+    "hash": "2335470962",
+    "contents": "",
+    "dirty": false,
+    "created": 1670672435370.0,
+    "source_on_save": false,
+    "relative_order": 1,
+    "properties": {
+        "source_window_id": "",
+        "Source": "Source",
+        "cursorPosition": "176,1",
+        "scrollLine": "168"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 1676201219,
+    "encoding": "UTF-8",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1676201219621,
+    "read_only": false,
+    "read_only_alternatives": []
+}

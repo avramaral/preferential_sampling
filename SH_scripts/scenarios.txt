@@ -1,0 +1,13 @@
+Correctly specified
+1: non-preferential sampling
+2: constant preferential sampling
+3: partition
+4: (horizontal) uniderictional triangular
+5: Continously defined function with Wendland
+
+Missespecified
+6: Continously defined function with triangular (fitting)
+7: (horizontal) uniderictional triangular with Wendland (fitting)
+
+Number of basis functions
+8: largest number of basis functions when fitting the model with Wendland

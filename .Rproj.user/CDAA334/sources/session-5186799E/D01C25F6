@@ -1,0 +1,27 @@
+{
+    "id": "D01C25F6",
+    "path": "~/Desktop/Preferential Sampling/APPLICATION/application.R",
+    "project_path": "APPLICATION/application.R",
+    "type": "r_source",
+    "hash": "0",
+    "contents": "",
+    "dirty": true,
+    "created": 1679501018420.0,
+    "source_on_save": false,
+    "relative_order": 1,
+    "properties": {
+        "tempName": "Untitled1",
+        "source_window_id": "",
+        "Source": "Source",
+        "cursorPosition": "220,16",
+        "scrollLine": "0"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 1679897370,
+    "encoding": "UTF-8",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1680089023607,
+    "read_only": false,
+    "read_only_alternatives": []
+}

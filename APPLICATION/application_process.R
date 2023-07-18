@@ -131,6 +131,7 @@ colnames(fitted_latent_df) <- c("estimated", "x", "y")
 
 pal <- jet.col(n = 100, alpha = 0.9)
 labs <- seq(round(min(fitted_latent_df$estimated) - 0.01, 2), round(max(fitted_latent_df$estimated) + 0.01, 2), length.out = 6)
+# labs <- seq(2.28, 14.68, length.out = 6)
 
 p_2 <- ggplot() +
   geom_tile(data = fitted_latent_df, mapping = aes(x = x, y = y, fill = estimated)) + 

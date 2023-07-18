@@ -1,0 +1,512 @@
+fitted_intensity_partial <- exp(result$fit$summary.fitted.values[idx_int, c("mean")])
+fitted_intensity <- loct$lambda
+values(fitted_intensity) <- fitted_intensity_partial
+if (normalize) { r <- normalize_function(r1 = loct$lambda, r2 = fitted_intensity); true_intensity <- r[[1]]; fitted_intensity <- r[[2]] }
+error_intensity <- MSE(orig = true_intensity, pred = fitted_intensity)
+print(paste("Prediction error (intensity): ", round(x = error_intensity, digits = 4), sep = ""))
+if (plotting) { plotting_true_fitted(true = true_intensity, fitted = fitted_intensity, title = "Intensity", fitted_model = fitted_model) }
+} else { error_intensity <- NULL }
+idx_lat <- inla.stack.index(fs_formula$full_stack, tag = "pred_y")$data
+fitted_latent_partial <- result$fit$summary.fitted.values[idx_lat, c("mean")]
+fitted_latent <- latt
+values(fitted_latent) <- fitted_latent_partial
+if (normalize) { r <- normalize_function(r1 = latt, r2 = fitted_latent); true_latent <- r[[1]]; fitted_latent <- r[[2]] }
+error_latent <- MSE(orig = true_latent, pred = fitted_latent)
+print(paste("Prediction error: ", round(x = error_latent, digits = 4), sep = ""))
+if (plotting) { plotting_true_fitted(true = true_latent, fitted = fitted_latent, title = "Latent", fitted_model = fitted_model) }
+coord_pred <- others[[n]]$coord_pred
+bfs_pred <- others[[n]]$bfs_pred
+(fitted_model == "var_DP_PS")
+(fitted_model == "var_DP_PS")
+if (fitted_model == "var_DP_PS") {
+fitted_preferentiality <- compute_preferentiatility(fit = result$fit, coord_pred = coord_pred, bfs_pred = bfs_pred, xlim = xlim, by = by)
+if (normalize) { r <- normalize_function(r1 = pref, r2 = fitted_preferentiality); true_preferentiality <- r[[1]]; fitted_preferentiality <- r[[2]] }
+error_preferentiality <- MSE(orig = true_preferentiality, pred = fitted_preferentiality)
+print(paste("Prediction error: ", round(x = error_preferentiality, digits = 4), sep = ""))
+if (plotting) { plotting_true_fitted(true = true_preferentiality, fitted = fitted_preferentiality, title = "Preferentiality", fitted_model = fitted_model) }
+} else { error_preferentiality <- NULL }
+errors[[n]] <- list(error_intensity = error_intensity, error_latent = error_latent, error_preferentiality = error_preferentiality)
+errors[[n]]
+scenario         <- 3
+sample_size      <- 500
+smoothing_kernel <- "partition"
+partition_const  <- "non_constant"
+n_center_points  <- "many"
+fitted_model     <- "non_PS" # "non_PS", "const_DP_PS", and "var_DP_PS"
+source("header.R")
+source("functions_data_generation.R")
+source("functions_model_fitting.R")
+source("functions_result_processing.R")
+source("functions_aux.R")
+normalize_function <- function (r1, r2, ...) {
+mm <- max(c(values(r1), values(r2)))
+mn <- min(c(values(r1), values(r2)))
+values(r1) <- (values(r1) - mn) / (mm - mn)
+values(r2) <- (values(r2) - mn) / (mm - mn)
+list(r1, r2)
+}
+plotting_true_fitted <- function (true, fitted, title = "Latent", fitted_model = "non_PS", ...) {
+par(mfrow = c(1, 2));
+len  <- 199
+brks <- round(seq(from = 0, to = 1, length.out = len), 9)
+arg  <- list(at = seq(from = 0, to = 1, length.out = 5), labels = round(seq(from = 0, to = 1, length.out = 5), digits = 2))
+plot(true,   breaks = brks, col = rainbow(n = len, start = 0.05, end = 0.85), axis.arg = arg, main = paste("Original ", title, " Process", sep = ""))
+plot(fitted, breaks = brks, col = rainbow(n = len, start = 0.05, end = 0.85), axis.arg = arg, main = paste("Estimated ", title, " Process (", fitted_model, ")", sep = ""))
+par(mfrow = c(1, 1))
+}
+set.seed(1)
+##################################################
+# Initial parameters
+##################################################
+xlim <- c(0, 10)
+ylim <- c(0, 10)
+by <- 0.05
+mu <- 2
+nu <- 1
+scl <- 2
+sig2 <- 1
+sig2_error <- 1
+n_points <- NULL
+pref_sampling <- TRUE
+NS <- FALSE
+normalize <- TRUE
+plotting <- TRUE
+N_sim <- 125
+data <- readRDS(file = paste("DATA/", sprintf("%02d", scenario), "/", sample_size, ".rds", sep = ""))
+results <- readRDS(file = paste("FITTED_MODELS/", sprintf("%02d", scenario), "/", fitted_model, "-", smoothing_kernel, "-", partition_const, "-", n_center_points, "-", sample_size, ".rds", sep = ""))
+others <- readRDS(file = paste("FITTED_MODELS/", sprintf("%02d", scenario), "/OTHERS/", fitted_model, "-", smoothing_kernel, "-", partition_const, "-", n_center_points, "-", sample_size, ".rds", sep = ""))
+N_models <- 100
+failed_models <- rep(x = 0, times = N_sim)
+for (n in 1:N_sim) { failed_models[n] <- ifelse(test = !results[[n]]$fit$ok, yes = 1, no = 0) }
+idxs <- which(failed_models == 0)
+if (length(idxs) >= N_models) { idxs <- idxs[1:N_models] } else { stop(paste("Less than ", N_models , " successfully fitted models.", sep = "")) }
+data <- data[idxs]
+results <- results[idxs]
+others <- others[idxs]
+errors <- list()
+n=1
+print(paste("Simulation: ", sprintf("%03d", n), sep = ""))
+latt <- data[[n]]$latt
+pref <- data[[n]]$pref
+loct <- data[[n]]$loct
+Yobs <- data[[n]]$Yobs
+orig <- data[[n]]$orig
+alpha <- data[[n]]$alpha
+result <- results[[n]]
+fs_formula <- others[[n]]$fs_formula
+if (fitted_model %in% c("const_DP_PS", "var_DP_PS")) {
+idx_int <- inla.stack.index(fs_formula$full_stack, tag = "pred_pp")$data
+fitted_intensity_partial <- exp(result$fit$summary.fitted.values[idx_int, c("mean")])
+fitted_intensity <- loct$lambda
+values(fitted_intensity) <- fitted_intensity_partial
+if (normalize) { r <- normalize_function(r1 = loct$lambda, r2 = fitted_intensity); true_intensity <- r[[1]]; fitted_intensity <- r[[2]] }
+error_intensity <- MSE(orig = true_intensity, pred = fitted_intensity)
+print(paste("Prediction error (intensity): ", round(x = error_intensity, digits = 4), sep = ""))
+if (plotting) { plotting_true_fitted(true = true_intensity, fitted = fitted_intensity, title = "Intensity", fitted_model = fitted_model) }
+} else { error_intensity <- NULL }
+idx_lat <- inla.stack.index(fs_formula$full_stack, tag = "pred_y")$data
+fitted_latent_partial <- result$fit$summary.fitted.values[idx_lat, c("mean")]
+fitted_latent <- latt
+values(fitted_latent) <- fitted_latent_partial
+if (normalize) { r <- normalize_function(r1 = latt, r2 = fitted_latent); true_latent <- r[[1]]; fitted_latent <- r[[2]] }
+error_latent <- MSE(orig = true_latent, pred = fitted_latent)
+print(paste("Prediction error: ", round(x = error_latent, digits = 4), sep = ""))
+if (plotting) { plotting_true_fitted(true = true_latent, fitted = fitted_latent, title = "Latent", fitted_model = fitted_model) }
+coord_pred <- others[[n]]$coord_pred
+bfs_pred <- others[[n]]$bfs_pred
+if (fitted_model == "var_DP_PS") {
+fitted_preferentiality <- compute_preferentiatility(fit = result$fit, coord_pred = coord_pred, bfs_pred = bfs_pred, xlim = xlim, by = by)
+if (normalize) { r <- normalize_function(r1 = pref, r2 = fitted_preferentiality); true_preferentiality <- r[[1]]; fitted_preferentiality <- r[[2]] }
+error_preferentiality <- MSE(orig = true_preferentiality, pred = fitted_preferentiality)
+print(paste("Prediction error: ", round(x = error_preferentiality, digits = 4), sep = ""))
+if (plotting) { plotting_true_fitted(true = true_preferentiality, fitted = fitted_preferentiality, title = "Preferentiality", fitted_model = fitted_model) }
+} else { error_preferentiality <- NULL }
+errors[[n]] <- list(error_intensity = error_intensity, error_latent = error_latent, error_preferentiality = error_preferentiality)
+errors
+scenario         <- 3
+sample_size      <- 500
+smoothing_kernel <- "partition"
+partition_const  <- "non_constant"
+n_center_points  <- "many"
+fitted_model     <- "var_DP_PS" # "non_PS", "const_DP_PS", and "var_DP_PS"
+source("header.R")
+source("functions_data_generation.R")
+source("functions_model_fitting.R")
+source("functions_result_processing.R")
+source("functions_aux.R")
+normalize_function <- function (r1, r2, ...) {
+mm <- max(c(values(r1), values(r2)))
+mn <- min(c(values(r1), values(r2)))
+values(r1) <- (values(r1) - mn) / (mm - mn)
+values(r2) <- (values(r2) - mn) / (mm - mn)
+list(r1, r2)
+}
+plotting_true_fitted <- function (true, fitted, title = "Latent", fitted_model = "non_PS", ...) {
+par(mfrow = c(1, 2));
+len  <- 199
+brks <- round(seq(from = 0, to = 1, length.out = len), 9)
+arg  <- list(at = seq(from = 0, to = 1, length.out = 5), labels = round(seq(from = 0, to = 1, length.out = 5), digits = 2))
+plot(true,   breaks = brks, col = rainbow(n = len, start = 0.05, end = 0.85), axis.arg = arg, main = paste("Original ", title, " Process", sep = ""))
+plot(fitted, breaks = brks, col = rainbow(n = len, start = 0.05, end = 0.85), axis.arg = arg, main = paste("Estimated ", title, " Process (", fitted_model, ")", sep = ""))
+par(mfrow = c(1, 1))
+}
+set.seed(1)
+##################################################
+# Initial parameters
+##################################################
+xlim <- c(0, 10)
+ylim <- c(0, 10)
+by <- 0.05
+mu <- 2
+nu <- 1
+scl <- 2
+sig2 <- 1
+sig2_error <- 1
+n_points <- NULL
+pref_sampling <- TRUE
+NS <- FALSE
+normalize <- TRUE
+plotting <- TRUE
+N_sim <- 125
+data <- readRDS(file = paste("DATA/", sprintf("%02d", scenario), "/", sample_size, ".rds", sep = ""))
+results <- readRDS(file = paste("FITTED_MODELS/", sprintf("%02d", scenario), "/", fitted_model, "-", smoothing_kernel, "-", partition_const, "-", n_center_points, "-", sample_size, ".rds", sep = ""))
+others <- readRDS(file = paste("FITTED_MODELS/", sprintf("%02d", scenario), "/OTHERS/", fitted_model, "-", smoothing_kernel, "-", partition_const, "-", n_center_points, "-", sample_size, ".rds", sep = ""))
+N_models <- 100
+failed_models <- rep(x = 0, times = N_sim)
+for (n in 1:N_sim) { failed_models[n] <- ifelse(test = !results[[n]]$fit$ok, yes = 1, no = 0) }
+idxs <- which(failed_models == 0)
+if (length(idxs) >= N_models) { idxs <- idxs[1:N_models] } else { stop(paste("Less than ", N_models , " successfully fitted models.", sep = "")) }
+data <- data[idxs]
+results <- results[idxs]
+others <- others[idxs]
+errors <- list()
+n=1
+print(paste("Simulation: ", sprintf("%03d", n), sep = ""))
+latt <- data[[n]]$latt
+pref <- data[[n]]$pref
+loct <- data[[n]]$loct
+Yobs <- data[[n]]$Yobs
+orig <- data[[n]]$orig
+alpha <- data[[n]]$alpha
+result <- results[[n]]
+fs_formula <- others[[n]]$fs_formula
+if (fitted_model %in% c("const_DP_PS", "var_DP_PS")) {
+idx_int <- inla.stack.index(fs_formula$full_stack, tag = "pred_pp")$data
+fitted_intensity_partial <- exp(result$fit$summary.fitted.values[idx_int, c("mean")])
+fitted_intensity <- loct$lambda
+values(fitted_intensity) <- fitted_intensity_partial
+if (normalize) { r <- normalize_function(r1 = loct$lambda, r2 = fitted_intensity); true_intensity <- r[[1]]; fitted_intensity <- r[[2]] }
+error_intensity <- MSE(orig = true_intensity, pred = fitted_intensity)
+print(paste("Prediction error (intensity): ", round(x = error_intensity, digits = 4), sep = ""))
+if (plotting) { plotting_true_fitted(true = true_intensity, fitted = fitted_intensity, title = "Intensity", fitted_model = fitted_model) }
+} else { error_intensity <- NULL }
+idx_lat <- inla.stack.index(fs_formula$full_stack, tag = "pred_y")$data
+fitted_latent_partial <- result$fit$summary.fitted.values[idx_lat, c("mean")]
+fitted_latent <- latt
+values(fitted_latent) <- fitted_latent_partial
+if (normalize) { r <- normalize_function(r1 = latt, r2 = fitted_latent); true_latent <- r[[1]]; fitted_latent <- r[[2]] }
+error_latent <- MSE(orig = true_latent, pred = fitted_latent)
+print(paste("Prediction error: ", round(x = error_latent, digits = 4), sep = ""))
+if (plotting) { plotting_true_fitted(true = true_latent, fitted = fitted_latent, title = "Latent", fitted_model = fitted_model) }
+coord_pred <- others[[n]]$coord_pred
+bfs_pred <- others[[n]]$bfs_pred
+if (fitted_model == "var_DP_PS") {
+fitted_preferentiality <- compute_preferentiatility(fit = result$fit, coord_pred = coord_pred, bfs_pred = bfs_pred, xlim = xlim, by = by)
+if (normalize) { r <- normalize_function(r1 = pref, r2 = fitted_preferentiality); true_preferentiality <- r[[1]]; fitted_preferentiality <- r[[2]] }
+error_preferentiality <- MSE(orig = true_preferentiality, pred = fitted_preferentiality)
+print(paste("Prediction error: ", round(x = error_preferentiality, digits = 4), sep = ""))
+if (plotting) { plotting_true_fitted(true = true_preferentiality, fitted = fitted_preferentiality, title = "Preferentiality", fitted_model = fitted_model) }
+} else { error_preferentiality <- NULL }
+errors[[n]] <- list(error_intensity = error_intensity, error_latent = error_latent, error_preferentiality = error_preferentiality)
+errors
+alpha
+summary(result$fit)
+n = 2
+latt <- data[[n]]$latt
+pref <- data[[n]]$pref
+loct <- data[[n]]$loct
+Yobs <- data[[n]]$Yobs
+orig <- data[[n]]$orig
+alpha <- data[[n]]$alpha
+alpha
+result <- results[[n]]
+fs_formula <- others[[n]]$fs_formula
+if (fitted_model %in% c("const_DP_PS", "var_DP_PS")) {
+idx_int <- inla.stack.index(fs_formula$full_stack, tag = "pred_pp")$data
+fitted_intensity_partial <- exp(result$fit$summary.fitted.values[idx_int, c("mean")])
+fitted_intensity <- loct$lambda
+values(fitted_intensity) <- fitted_intensity_partial
+if (normalize) { r <- normalize_function(r1 = loct$lambda, r2 = fitted_intensity); true_intensity <- r[[1]]; fitted_intensity <- r[[2]] }
+error_intensity <- MSE(orig = true_intensity, pred = fitted_intensity)
+print(paste("Prediction error (intensity): ", round(x = error_intensity, digits = 4), sep = ""))
+if (plotting) { plotting_true_fitted(true = true_intensity, fitted = fitted_intensity, title = "Intensity", fitted_model = fitted_model) }
+} else { error_intensity <- NULL }
+idx_lat <- inla.stack.index(fs_formula$full_stack, tag = "pred_y")$data
+fitted_latent_partial <- result$fit$summary.fitted.values[idx_lat, c("mean")]
+fitted_latent <- latt
+values(fitted_latent) <- fitted_latent_partial
+if (normalize) { r <- normalize_function(r1 = latt, r2 = fitted_latent); true_latent <- r[[1]]; fitted_latent <- r[[2]] }
+error_latent <- MSE(orig = true_latent, pred = fitted_latent)
+print(paste("Prediction error: ", round(x = error_latent, digits = 4), sep = ""))
+if (plotting) { plotting_true_fitted(true = true_latent, fitted = fitted_latent, title = "Latent", fitted_model = fitted_model) }
+coord_pred <- others[[n]]$coord_pred
+bfs_pred <- others[[n]]$bfs_pred
+if (fitted_model == "var_DP_PS") {
+fitted_preferentiality <- compute_preferentiatility(fit = result$fit, coord_pred = coord_pred, bfs_pred = bfs_pred, xlim = xlim, by = by)
+if (normalize) { r <- normalize_function(r1 = pref, r2 = fitted_preferentiality); true_preferentiality <- r[[1]]; fitted_preferentiality <- r[[2]] }
+error_preferentiality <- MSE(orig = true_preferentiality, pred = fitted_preferentiality)
+print(paste("Prediction error: ", round(x = error_preferentiality, digits = 4), sep = ""))
+if (plotting) { plotting_true_fitted(true = true_preferentiality, fitted = fitted_preferentiality, title = "Preferentiality", fitted_model = fitted_model) }
+} else { error_preferentiality <- NULL }
+errors[[n]] <- list(error_intensity = error_intensity, error_latent = error_latent, error_preferentiality = error_preferentiality)
+errors
+scenario         <- 3
+sample_size      <- 500
+smoothing_kernel <- "partition"
+partition_const  <- "non_constant"
+n_center_points  <- "many"
+fitted_model     <- "var_DP_PS" # "non_PS", "const_DP_PS", and "var_DP_PS"
+source("header.R")
+source("functions_data_generation.R")
+source("functions_model_fitting.R")
+source("functions_result_processing.R")
+source("functions_aux.R")
+normalize_function <- function (r1, r2, ...) {
+mm <- max(c(values(r1), values(r2)))
+mn <- min(c(values(r1), values(r2)))
+values(r1) <- (values(r1) - mn) / (mm - mn)
+values(r2) <- (values(r2) - mn) / (mm - mn)
+list(r1, r2)
+}
+plotting_true_fitted <- function (true, fitted, title = "Latent", fitted_model = "non_PS", ...) {
+par(mfrow = c(1, 2));
+len  <- 199
+brks <- round(seq(from = 0, to = 1, length.out = len), 9)
+arg  <- list(at = seq(from = 0, to = 1, length.out = 5), labels = round(seq(from = 0, to = 1, length.out = 5), digits = 2))
+plot(true,   breaks = brks, col = rainbow(n = len, start = 0.05, end = 0.85), axis.arg = arg, main = paste("Original ", title, " Process", sep = ""))
+plot(fitted, breaks = brks, col = rainbow(n = len, start = 0.05, end = 0.85), axis.arg = arg, main = paste("Estimated ", title, " Process (", fitted_model, ")", sep = ""))
+par(mfrow = c(1, 1))
+}
+set.seed(1)
+##################################################
+# Initial parameters
+##################################################
+xlim <- c(0, 10)
+ylim <- c(0, 10)
+by <- 0.05
+mu <- 2
+nu <- 1
+scl <- 2
+sig2 <- 1
+sig2_error <- 1
+n_points <- NULL
+pref_sampling <- TRUE
+NS <- FALSE
+normalize <- TRUE
+plotting <- TRUE
+##################################################
+N_sim <- 125
+data <- readRDS(file = paste("DATA/", sprintf("%02d", scenario), "/", sample_size, ".rds", sep = ""))
+results <- readRDS(file = paste("FITTED_MODELS/", sprintf("%02d", scenario), "/", fitted_model, "-", smoothing_kernel, "-", partition_const, "-", n_center_points, "-", sample_size, ".rds", sep = ""))
+others <- readRDS(file = paste("FITTED_MODELS/", sprintf("%02d", scenario), "/OTHERS/", fitted_model, "-", smoothing_kernel, "-", partition_const, "-", n_center_points, "-", sample_size, ".rds", sep = ""))
+##################################################
+N_models <- 100
+failed_models <- rep(x = 0, times = N_sim)
+for (n in 1:N_sim) { failed_models[n] <- ifelse(test = !results[[n]]$fit$ok, yes = 1, no = 0) }
+idxs <- which(failed_models == 0)
+if (length(idxs) >= N_models) { idxs <- idxs[1:N_models] } else { stop(paste("Less than ", N_models , " successfully fitted models.", sep = "")) }
+data <- data[idxs]
+results <- results[idxs]
+others <- others[idxs]
+##################################################
+errors <- list()
+for (n in 1:N_models) {
+print(paste("Simulation: ", sprintf("%03d", n), sep = ""))
+latt <- data[[n]]$latt
+pref <- data[[n]]$pref
+loct <- data[[n]]$loct
+Yobs <- data[[n]]$Yobs
+orig <- data[[n]]$orig
+alpha <- data[[n]]$alpha
+result <- results[[n]]
+fs_formula <- others[[n]]$fs_formula
+##############################
+# Intensity Process
+##############################
+if (fitted_model %in% c("const_DP_PS", "var_DP_PS")) {
+idx_int <- inla.stack.index(fs_formula$full_stack, tag = "pred_pp")$data
+fitted_intensity_partial <- exp(result$fit$summary.fitted.values[idx_int, c("mean")])
+fitted_intensity <- loct$lambda
+values(fitted_intensity) <- fitted_intensity_partial
+if (normalize) { r <- normalize_function(r1 = loct$lambda, r2 = fitted_intensity); true_intensity <- r[[1]]; fitted_intensity <- r[[2]] }
+error_intensity <- MSE(orig = true_intensity, pred = fitted_intensity)
+print(paste("Prediction error (intensity): ", round(x = error_intensity, digits = 4), sep = ""))
+if (plotting) { plotting_true_fitted(true = true_intensity, fitted = fitted_intensity, title = "Intensity", fitted_model = fitted_model) }
+} else { error_intensity <- NULL }
+##############################
+# Latent Process
+##############################
+idx_lat <- inla.stack.index(fs_formula$full_stack, tag = "pred_y")$data
+fitted_latent_partial <- result$fit$summary.fitted.values[idx_lat, c("mean")]
+fitted_latent <- latt
+values(fitted_latent) <- fitted_latent_partial
+if (normalize) { r <- normalize_function(r1 = latt, r2 = fitted_latent); true_latent <- r[[1]]; fitted_latent <- r[[2]] }
+error_latent <- MSE(orig = true_latent, pred = fitted_latent)
+print(paste("Prediction error: ", round(x = error_latent, digits = 4), sep = ""))
+if (plotting) { plotting_true_fitted(true = true_latent, fitted = fitted_latent, title = "Latent", fitted_model = fitted_model) }
+##############################
+# Preferentiality Process
+##############################
+coord_pred <- others[[n]]$coord_pred
+bfs_pred <- others[[n]]$bfs_pred
+if (fitted_model == "var_DP_PS") {
+fitted_preferentiality <- compute_preferentiatility(fit = result$fit, coord_pred = coord_pred, bfs_pred = bfs_pred, xlim = xlim, by = by)
+if (normalize) { r <- normalize_function(r1 = pref, r2 = fitted_preferentiality); true_preferentiality <- r[[1]]; fitted_preferentiality <- r[[2]] }
+error_preferentiality <- MSE(orig = true_preferentiality, pred = fitted_preferentiality)
+print(paste("Prediction error: ", round(x = error_preferentiality, digits = 4), sep = ""))
+if (plotting) { plotting_true_fitted(true = true_preferentiality, fitted = fitted_preferentiality, title = "Preferentiality", fitted_model = fitted_model) }
+} else { error_preferentiality <- NULL }
+##############################
+##############################
+errors[[n]] <- list(error_intensity = error_intensity, error_latent = error_latent, error_preferentiality = error_preferentiality)
+}
+saveRDS(errors, file = paste("FITTED_MODELS/", sprintf("%02d", scenario), "/ERRORS/", fitted_model, "-", smoothing_kernel, "-", partition_const, "-", n_center_points, "-", sample_size, ".rds", sep = ""))
+c(NA, 1)
+c(MULL, 1)
+c(NULL, 1)
+ie <- c()
+le <- c()
+pe <- c()
+for (n in 1:100) {
+ie <- c(aa, errors[[n]]$error_intensity)
+le <- c(aa, errors[[n]]$error_latent)
+pe <- c(aa, errors[[n]]$error_preferentiality)
+}
+ie <- c()
+le <- c()
+pe <- c()
+for (n in 1:100) {
+ie <- c(ie, errors[[n]]$error_intensity)
+le <- c(le, errors[[n]]$error_latent)
+pe <- c(pe, errors[[n]]$error_preferentiality)
+}
+ie
+boxplot(pe)
+mean(pe)
+sd(pe)
+boxplot(le)
+mean(le)
+sd(le)
+mean(pe)
+mean(ie)
+scenario         <- 3
+sample_size      <- 500
+smoothing_kernel <- "partition"
+partition_const  <- "non_constant"
+n_center_points  <- "many"
+fitted_model     <- "var_DP_PS" # "non_PS", "const_DP_PS", and "var_DP_PS"
+source("header.R")
+source("functions_data_generation.R")
+source("functions_model_fitting.R")
+source("functions_result_processing.R")
+source("functions_aux.R")
+normalize_function <- function (r1, r2, ...) {
+mm <- max(c(values(r1), values(r2)))
+mn <- min(c(values(r1), values(r2)))
+values(r1) <- (values(r1) - mn) / (mm - mn)
+values(r2) <- (values(r2) - mn) / (mm - mn)
+list(r1, r2)
+}
+plotting_true_fitted <- function (true, fitted, title = "Latent", fitted_model = "non_PS", ...) {
+par(mfrow = c(1, 2));
+len  <- 199
+brks <- round(seq(from = 0, to = 1, length.out = len), 9)
+arg  <- list(at = seq(from = 0, to = 1, length.out = 5), labels = round(seq(from = 0, to = 1, length.out = 5), digits = 2))
+plot(true,   breaks = brks, col = rainbow(n = len, start = 0.05, end = 0.85), axis.arg = arg, main = paste("Original ", title, " Process", sep = ""))
+plot(fitted, breaks = brks, col = rainbow(n = len, start = 0.05, end = 0.85), axis.arg = arg, main = paste("Estimated ", title, " Process (", fitted_model, ")", sep = ""))
+par(mfrow = c(1, 1))
+}
+set.seed(1)
+##################################################
+# Initial parameters
+##################################################
+xlim <- c(0, 10)
+ylim <- c(0, 10)
+by <- 0.05
+mu <- 2
+nu <- 1
+scl <- 2
+sig2 <- 1
+sig2_error <- 1
+n_points <- NULL
+pref_sampling <- TRUE
+NS <- FALSE
+normalize <- TRUE
+plotting <- FALSE
+##################################################
+N_sim <- 125
+data <- readRDS(file = paste("DATA/", sprintf("%02d", scenario), "/", sample_size, ".rds", sep = ""))
+results <- readRDS(file = paste("FITTED_MODELS/", sprintf("%02d", scenario), "/", fitted_model, "-", smoothing_kernel, "-", partition_const, "-", n_center_points, "-", sample_size, ".rds", sep = ""))
+others <- readRDS(file = paste("FITTED_MODELS/", sprintf("%02d", scenario), "/OTHERS/", fitted_model, "-", smoothing_kernel, "-", partition_const, "-", n_center_points, "-", sample_size, ".rds", sep = ""))
+##################################################
+N_models <- 100
+failed_models <- rep(x = 0, times = N_sim)
+for (n in 1:N_sim) { failed_models[n] <- ifelse(test = !results[[n]]$fit$ok, yes = 1, no = 0) }
+idxs <- which(failed_models == 0)
+if (length(idxs) >= N_models) { idxs <- idxs[1:N_models] } else { stop(paste("Less than ", N_models , " successfully fitted models.", sep = "")) }
+data <- data[idxs]
+results <- results[idxs]
+others <- others[idxs]
+##################################################
+errors <- list()
+for (n in 1:N_models) {
+print(paste("Simulation: ", sprintf("%03d", n), sep = ""))
+latt <- data[[n]]$latt
+pref <- data[[n]]$pref
+loct <- data[[n]]$loct
+Yobs <- data[[n]]$Yobs
+orig <- data[[n]]$orig
+alpha <- data[[n]]$alpha
+result <- results[[n]]
+fs_formula <- others[[n]]$fs_formula
+##############################
+# Intensity Process
+##############################
+if (fitted_model %in% c("const_DP_PS", "var_DP_PS")) {
+idx_int <- inla.stack.index(fs_formula$full_stack, tag = "pred_pp")$data
+fitted_intensity_partial <- exp(result$fit$summary.fitted.values[idx_int, c("mean")])
+fitted_intensity <- loct$lambda
+values(fitted_intensity) <- fitted_intensity_partial
+if (normalize) { r <- normalize_function(r1 = loct$lambda, r2 = fitted_intensity); true_intensity <- r[[1]]; fitted_intensity <- r[[2]] }
+error_intensity <- MSE(orig = true_intensity, pred = fitted_intensity)
+print(paste("Prediction error (intensity): ", round(x = error_intensity, digits = 4), sep = ""))
+if (plotting) { plotting_true_fitted(true = true_intensity, fitted = fitted_intensity, title = "Intensity", fitted_model = fitted_model) }
+} else { error_intensity <- NA }
+##############################
+# Latent Process
+##############################
+idx_lat <- inla.stack.index(fs_formula$full_stack, tag = "pred_y")$data
+fitted_latent_partial <- result$fit$summary.fitted.values[idx_lat, c("mean")]
+fitted_latent <- latt
+values(fitted_latent) <- fitted_latent_partial
+if (normalize) { r <- normalize_function(r1 = latt, r2 = fitted_latent); true_latent <- r[[1]]; fitted_latent <- r[[2]] }
+error_latent <- MSE(orig = true_latent, pred = fitted_latent)
+print(paste("Prediction error (latent): ", round(x = error_latent, digits = 4), sep = ""))
+if (plotting) { plotting_true_fitted(true = true_latent, fitted = fitted_latent, title = "Latent", fitted_model = fitted_model) }
+##############################
+# Preferentiality Process
+##############################
+coord_pred <- others[[n]]$coord_pred
+bfs_pred <- others[[n]]$bfs_pred
+if (fitted_model == "var_DP_PS") {
+fitted_preferentiality <- compute_preferentiatility(fit = result$fit, coord_pred = coord_pred, bfs_pred = bfs_pred, xlim = xlim, by = by)
+if (normalize) { r <- normalize_function(r1 = pref, r2 = fitted_preferentiality); true_preferentiality <- r[[1]]; fitted_preferentiality <- r[[2]] }
+error_preferentiality <- MSE(orig = true_preferentiality, pred = fitted_preferentiality)
+print(paste("Prediction error (preferentiatility): ", round(x = error_preferentiality, digits = 4), sep = ""))
+if (plotting) { plotting_true_fitted(true = true_preferentiality, fitted = fitted_preferentiality, title = "Preferentiality", fitted_model = fitted_model) }
+} else { error_preferentiality <- NA }
+##############################
+##############################
+errors[[n]] <- list(error_intensity = error_intensity, error_latent = error_latent, error_preferentiality = error_preferentiality)
+}
+saveRDS(errors, file = paste("FITTED_MODELS/", sprintf("%02d", scenario), "/ERRORS/", fitted_model, "-", smoothing_kernel, "-", partition_const, "-", n_center_points, "-", sample_size, ".rds", sep = ""))
